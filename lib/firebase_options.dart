@@ -44,38 +44,37 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBdeBf-A9ava6H6pyzUaSf6YmDe133INg8',
-    appId: '1:414858562106:web:31694e53367f8c56540303',
-    messagingSenderId: '414858562106',
-    projectId: 'goal-quester',
-    authDomain: 'goal-quester.firebaseapp.com',
-    storageBucket: 'goal-quester.appspot.com',
-    measurementId: 'G-TX328P85MP',
+    apiKey: 'AIzaSyDVsBPFP3IcxbYHhXg1CJOBFq3j3WDrkYc',
+    appId: '1:1065294549255:web:148df171e50c1ca798f5a2',
+    messagingSenderId: '1065294549255',
+    projectId: 'goal-questar',
+    authDomain: 'goal-questar.firebaseapp.com',
+    storageBucket: 'goal-questar.appspot.com',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDYGBK7OkR8Hc_L-0cVfeEnr6AGLsgYGMk',
-    appId: '1:414858562106:android:55f332429f802248540303',
-    messagingSenderId: '414858562106',
-    projectId: 'goal-quester',
-    storageBucket: 'goal-quester.appspot.com',
+    apiKey: 'AIzaSyDp8J0GrsCR40bQP3_tNaQVZDkncJrtK7U',
+    appId: '1:1065294549255:android:12272e516ac4814d98f5a2',
+    messagingSenderId: '1065294549255',
+    projectId: 'goal-questar',
+    storageBucket: 'goal-questar.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDs7WvDZHxXn89Ch3j6V7O_xNbEiIY4Dqc',
-    appId: '1:414858562106:ios:a209a705bbac6070540303',
-    messagingSenderId: '414858562106',
-    projectId: 'goal-quester',
-    storageBucket: 'goal-quester.appspot.com',
+    apiKey: 'AIzaSyAhVp6YRX1UzeAO8UyEyhv-AHgGWvadYak',
+    appId: '1:1065294549255:ios:63173dda17004e3c98f5a2',
+    messagingSenderId: '1065294549255',
+    projectId: 'goal-questar',
+    storageBucket: 'goal-questar.appspot.com',
     iosBundleId: 'com.example.goalQuester',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyDs7WvDZHxXn89Ch3j6V7O_xNbEiIY4Dqc',
-    appId: '1:414858562106:ios:7b81757d066a266d540303',
-    messagingSenderId: '414858562106',
-    projectId: 'goal-quester',
-    storageBucket: 'goal-quester.appspot.com',
+    apiKey: 'AIzaSyAhVp6YRX1UzeAO8UyEyhv-AHgGWvadYak',
+    appId: '1:1065294549255:ios:04b3e37e8d43c0f098f5a2',
+    messagingSenderId: '1065294549255',
+    projectId: 'goal-questar',
+    storageBucket: 'goal-questar.appspot.com',
     iosBundleId: 'com.example.goalQuester.RunnerTests',
   );
 }

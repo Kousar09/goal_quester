@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "414858562106",
-    "project_id": "goal-quester",
-    "storage_bucket": "goal-quester.appspot.com"
+    "project_number": "1065294549255",
+    "project_id": "goal-questar",
+    "storage_bucket": "goal-questar.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:414858562106:android:55f332429f802248540303",
+        "mobilesdk_app_id": "1:1065294549255:android:12272e516ac4814d98f5a2",
         "android_client_info": {
           "package_name": "com.example.goal_quester"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDYGBK7OkR8Hc_L-0cVfeEnr6AGLsgYGMk"
+          "current_key": "AIzaSyDp8J0GrsCR40bQP3_tNaQVZDkncJrtK7U"
         }
       ],
       "services": {
