@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -16,19 +17,11 @@ class GoalDetailsScreen extends StatefulWidget {
 }
 
 class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
-  List<String> taskTitles = [];
-  List<dynamic> taskIds = [];
   final String userId = FirebaseAuth.instance.currentUser!.uid;
-  List percentage = [0.0];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
-    List tasks = (widget.goalData['tasks'] as Map).values.toList();
-    taskIds = (widget.goalData['tasks'] as Map).keys.toList();
-    for (Map task in tasks) {
-      taskTitles.add(task['taskTitle']);
-    }
-
     return Scaffold(
       appBar: AppBar(
         foregroundColor: Colors.white,
@@ -48,27 +41,68 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
             ),
             const SizedBox(height: 10),
             Expanded(
-              child: ListView.builder(
-                itemCount: taskIds.length,
-                itemBuilder: (context, index) {
-                  return TaskContainer(
-                    userId: userId,
-                    goalId: widget.goalId,
-                    taskId: taskIds[index],
-                    taskTitle: taskTitles[index],
-                    percentage: percentage,
+              child: StreamBuilder(
+                stream: _firestore
+                    .collection('goals')
+                    .doc(userId)
+                    .collection('user_goals')
+                    .doc(widget.goalId)
+                    .collection('tasks')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return Text('');
+                  }
+                  if (snapshot.hasError) {
+                    // Handle error
+                    return Text('Error: ${snapshot.error}');
+                  }
+                  var tasks = snapshot.data!.docs.reversed;
+                  print(tasks);
+                  List<Widget> compTasks = [];
+                  List<Widget> pendTasks = [];
+
+                  for (var task in tasks) {
+                    if (task['isCompleted']) {
+                      compTasks.add(TaskContainer(
+                          userId: userId,
+                          goalId: widget.goalId,
+                          taskId: task.id,
+                          taskTitle: task['taskTitle']));
+                    } else {
+                      pendTasks.add(TaskContainer(
+                          userId: userId,
+                          goalId: widget.goalId,
+                          taskId: task.id,
+                          taskTitle: task['taskTitle']));
+                    }
+                  }
+                  return Column(
+                    children: [
+                      Text('Pending Tasks'),
+                      Expanded(
+                        child: ListView(
+                          children: pendTasks,
+                        ),
+                      ),
+                      Text('Completed Tasks'),
+                      Expanded(
+                        child: ListView(
+                          children: compTasks,
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
             ),
-            const Spacer(),
             CircularPercentIndicator(
               radius: 60.0,
               lineWidth: 6.0,
               animation: true,
-              percent: percentage[0],
+              percent: 0,
               center: Text(
-                "${(percentage[0] * 100).toStringAsFixed(1)}%",
+                "${0.toStringAsFixed(1)}%",
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 20.0,
@@ -82,7 +116,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       ),
     );
   }
-
 }
 
 class TaskContainer extends StatefulWidget {
@@ -92,14 +125,12 @@ class TaskContainer extends StatefulWidget {
     required this.goalId,
     required this.taskId,
     required this.taskTitle,
-    required this.percentage,
   });
 
   final String userId;
   final String goalId;
   final String taskId;
   final String taskTitle;
-  final List percentage;
 
   @override
   State<TaskContainer> createState() => _TaskContainerState();
@@ -107,81 +138,109 @@ class TaskContainer extends StatefulWidget {
 
 class _TaskContainerState extends State<TaskContainer> {
   bool isCompleted = false;
-  bool isLoading = true;
-  late DatabaseReference taskRef;
-  late DatabaseReference goalRef;
 
   @override
   void initState() {
     super.initState();
-    taskRef = FirebaseDatabase.instance.ref(
-        'myapp/users/${widget.userId}/all_goals/${widget.goalId}/tasks/${widget.taskId}');
-    goalRef = FirebaseDatabase.instance
-        .ref('myapp/users/${widget.userId}/all_goals/${widget.goalId}');
-    taskRef.child('isCompleted').onValue.listen((event) {
-      isCompleted = event.snapshot.value as bool;
+    fetchData();
+  }
+
+  void fetchData() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('goals')
+          .doc(widget.userId)
+          .collection('user_goals')
+          .doc(widget.goalId)
+          .collection('tasks')
+          .doc(widget.taskId)
+          .get();
+
+      if (snapshot.exists) {
+        // Document exists, update the state with the value of isCompleted
+        setState(() {
+          isCompleted = snapshot.data()?['isCompleted'] ?? false;
+        });
+      } else {
+        // Document does not exist, handle accordingly
+        setState(() {
+          isCompleted = false; // or another default value
+        });
+      }
+    } catch (error) {
+      // Handle errors
+      print('Error fetching data: $error');
       setState(() {
-        isLoading = false;
+        isCompleted = false; // or another default value
       });
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return isLoading
-        ? Center(
-            child: SpinKitCircle(
-              color: color_constants.primary,
+    DocumentReference taskRef = FirebaseFirestore.instance
+        .collection('goals')
+        .doc(widget.userId)
+        .collection('user_goals')
+        .doc(widget.goalId)
+        .collection('tasks')
+        .doc(widget.taskId);
+    DocumentReference goalRef = FirebaseFirestore.instance
+        .collection('goals')
+        .doc(widget.userId)
+        .collection('user_goals')
+        .doc(widget.goalId);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          Checkbox(
+            value: isCompleted,
+            onChanged: (val) async {
+              try {
+                final snapshot = await taskRef.get();
+
+                if (snapshot.exists) {
+                  // Document exists, update the 'isCompleted' field
+                  await taskRef.update({
+                    'isCompleted': !(snapshot.data() as Map)['isCompleted']
+                  });
+                  setState(() {
+                    isCompleted = !(snapshot.data() as Map)['isCompleted'];
+                  });
+                  if (isCompleted) {
+                    await goalRef.update({
+                      'completed': FieldValue.increment(1),
+                      'pending': FieldValue.increment(-1),
+                    });
+                  } else {
+                    await goalRef.update({
+                      'completed': FieldValue.increment(-1),
+                      'pending': FieldValue.increment(1),
+                    });
+                  }
+                } else {
+                  print('Document does not exist.');
+                }
+              } catch (error) {
+                // Handle errors
+                print('Error updating data: $error');
+              }
+            },
+          ),
+          Text(
+            widget.taskTitle,
+            style: TextStyle(
+              decoration: isCompleted
+                  ? TextDecoration.lineThrough
+                  : TextDecoration.none,
+              fontFamily: GoogleFonts.notoSans().fontFamily,
+              fontSize: 16,
+              fontWeight: FontWeight.normal,
             ),
           )
-        : Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              children: [
-                Checkbox(
-                  value: isCompleted,
-                  onChanged: (val) {
-                    setState(() {
-                      isCompleted = !isCompleted;
-                    });
-                    taskRef.update({"isCompleted": isCompleted});
-
-                    if (isCompleted) {
-                      goalRef.update({
-                        "completed": ServerValue.increment(1),
-                        "pending": ServerValue.increment(-1),
-                      });
-                    } else {
-                      goalRef.update({
-                        "completed": ServerValue.increment(-1),
-                        "pending": ServerValue.increment(1),
-                      });
-                    }
-                    var completed =
-                        (goalRef.child('completed').get() as DataSnapshot)
-                            .value;
-                    var pending =
-                        (goalRef.child('pending').get() as DataSnapshot).value;
-                    setState(() {
-                      widget.percentage[0] = int.parse(completed.toString()) /
-                              int.parse(completed.toString()) +
-                          int.parse(pending.toString());
-                    });
-                  },
-                ),
-                Text(
-                  widget.taskTitle,
-                  style: TextStyle(
-                    decoration: isCompleted
-                        ? TextDecoration.lineThrough
-                        : TextDecoration.none,
-                    fontFamily: GoogleFonts.notoSans().fontFamily,
-                    fontSize: 16,
-                    fontWeight: FontWeight.normal,
-                  ),
-                )
-              ],
-            ),
-          );
+        ],
+      ),
+    );
   }
 }

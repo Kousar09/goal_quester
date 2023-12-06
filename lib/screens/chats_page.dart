@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:goal_quester/screens/image_widget.dart';
 import 'package:goal_quester/screens/one_ot_one_chat.dart';
 
 class ChatsPage extends StatelessWidget {
@@ -25,7 +26,8 @@ class ChatsPage extends StatelessWidget {
           }
           var name = user['fname'] + ' ' + user['lname'];
           var purl = user['purl'];
-          userWidgets.add(UserContainer(id: user.id, name: name, purl: purl));
+          userWidgets.add(UserContainer(
+              id: user.id, name: name, purl: purl, gender: user['gender']));
         }
         return ListView(
           children: userWidgets,
@@ -37,10 +39,15 @@ class ChatsPage extends StatelessWidget {
 
 class UserContainer extends StatelessWidget {
   const UserContainer(
-      {super.key, required this.id, required this.name, required this.purl});
+      {super.key,
+      required this.id,
+      required this.name,
+      required this.purl,
+      required this.gender});
   final String name;
   final String purl;
   final String id;
+  final String gender;
 
   @override
   Widget build(BuildContext context) {
@@ -56,10 +63,12 @@ class UserContainer extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         child: Row(
           children: [
-            ClipRRect(
-                borderRadius: const BorderRadius.all(Radius.circular(30)),
-                child:
-                    CachedNetworkImage(imageUrl: purl, height: 60, width: 60)),
+            ProfileImage(
+                purl: purl,
+                gender: gender,
+                height: 60,
+                width: 60,
+                borderRadius: 30),
             const SizedBox(
               width: 20,
             ),

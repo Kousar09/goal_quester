@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -78,9 +77,6 @@ class _ProfileDetailsState extends State<ProfileDetails> {
                 .showSnackBar(SnackBar(content: Text(e.code)));
           }
         }
-        DatabaseReference ref =
-            FirebaseDatabase.instance.ref("myapp/users/" + newUser.user!.uid);
-        ref.set({"goals": 0, "completed": 0, "pending": 0});
 
         await _firestore.collection('users').doc(newUser.user!.uid).set({
           'fname': _fname,
@@ -92,15 +88,15 @@ class _ProfileDetailsState extends State<ProfileDetails> {
         Navigator.push(context,
             MaterialPageRoute(builder: (context) => const MyHomePage()));
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Sign up successfull')));
+            .showSnackBar(const SnackBar(content: Text('Sign up successfull')));
       } on FirebaseAuthException catch (e) {
         if (e.code == 'weak-password') {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('The password provided is too weak.')),
+            const SnackBar(content: Text('The password provided is too weak.')),
           );
         } else if (e.code == 'email-already-in-use') {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
                 content: Text('The account already exists for that email.')),
           );
         }

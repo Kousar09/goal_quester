@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/cupertino.dart';
@@ -17,8 +18,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   static String userId = FirebaseAuth.instance.currentUser!.uid.toString();
-  final DatabaseReference _ref =
-      FirebaseDatabase.instance.ref('myapp/users/$userId/all_goals/');
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -109,35 +109,33 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildGoalsList() {
     return StreamBuilder(
-      stream: _ref.onValue,
+      stream: _firestore
+          .collection('goals')
+          .doc(userId)
+          .collection('user_goals')
+          .orderBy('createdAt')
+          .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return Column(
               children: List.generate(4, (index) => ShimmerLoadingContainer()));
-        } else {
-          if (snapshot.data != null) {
-            DataSnapshot data = (snapshot.data as DatabaseEvent).snapshot;
-            if (data.value != null) {
-              List<dynamic> ids = (data.value as Map).keys.toList();
-              List<dynamic> goalData = (data.value as Map).values.toList();
-              return Expanded(
-                child: ListView.builder(
-                  itemCount: goalData.length,
-                  itemBuilder: (context, index) {
-                    return GoalContainer(
-                      goalId: ids[index],
-                      goalData: goalData[index],
-                    );
-                  },
-                ),
-              );
-            } else {
-              return const Text('No data available');
-            }
-          } else {
-            return const Text('No data available');
-          }
         }
+        if (snapshot.hasError) {
+          // Handle error
+          return Text('Error: ${snapshot.error}');
+        }
+        var goals = snapshot.data!.docs.reversed;
+        List<Widget> goalWidgets = [];
+        for (var goal in goals) {
+          Map<String, dynamic> goalData = goal.data() as Map<String, dynamic>;
+          print(goalData);
+          goalWidgets.add(GoalContainer(goalId: goal.id, goalData: goalData));
+        }
+        return Expanded(
+          child: ListView(
+            children: goalWidgets,
+          ),
+        );
       },
     );
   }
