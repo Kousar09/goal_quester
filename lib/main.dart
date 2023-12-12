@@ -81,7 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final List<Widget> _contentShown = [
     const HomePage(),
     ChatsPage(),
-    const SearchPage(),
+    SearchPage(),
     const ProfilePage()
   ];
   @override

@@ -8,6 +8,7 @@ import 'package:goal_quester/screens/one_ot_one_chat.dart';
 class ChatsPage extends StatelessWidget {
   ChatsPage({super.key});
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String userid = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   Widget build(BuildContext context) {

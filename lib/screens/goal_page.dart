@@ -1,11 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:goal_quester/constants/color_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
   GoalDetailsScreen({Key? key, required this.goalId, required this.goalData});
@@ -16,9 +13,99 @@ class GoalDetailsScreen extends StatefulWidget {
   State<GoalDetailsScreen> createState() => _GoalDetailsScreenState();
 }
 
+class Task {
+  String id = '';
+  String title = '';
+  bool isCompleted = false;
+  Task(String id, String title, bool isCompleted) {
+    id = this.id;
+    title = this.title;
+    isCompleted = this.isCompleted;
+  }
+}
+
 class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   final String userId = FirebaseAuth.instance.currentUser!.uid;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  List<TaskContainer> taskWidgets = [];
+  Map taskState = {};
+
+  bool isLoading = true;
+  int completed = 0;
+  int pending = 0;
+  @override
+  void initState() {
+    super.initState();
+    fetchTasks();
+  }
+
+  @override
+  void deactivate() {
+    super.deactivate();
+    changeTasksState();
+  }
+
+  void changeTasksState() {
+    final snapshot = FirebaseFirestore.instance
+        .collection('goals')
+        .doc(userId)
+        .collection('user_goals')
+        .doc(widget.goalId)
+        .collection('tasks');
+    for (var task in taskState.entries) {
+      snapshot.doc(task.key).update({'isCompleted': task.value});
+    }
+    FirebaseFirestore.instance
+        .collection('goals')
+        .doc(userId)
+        .collection('user_goals')
+        .doc(widget.goalId)
+        .update({
+      'completed': completed,
+      'pending': pending,
+    });
+  }
+
+  Future<void> fetchTasks() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('goals')
+        .doc(userId)
+        .collection('user_goals')
+        .doc(widget.goalId)
+        .collection('tasks')
+        .get();
+    for (var element in snapshot.docs) {
+      taskState[element.id] = element['isCompleted'];
+      setState(() {
+        if (element['isCompleted'] == true) {
+          completed += 1;
+        } else {
+          pending += 1;
+        }
+      });
+    }
+    for (var element in snapshot.docs) {
+      taskWidgets.add(TaskContainer(
+        taskId: element.id,
+        taskTitle: element['taskTitle'],
+        tasksState: taskState,
+        onCompletionChanged: (isCompleted) {
+          // Update the completion percentage when a task is completed or pending
+          setState(() {
+            if (isCompleted) {
+              completed += 1;
+              pending -= 1;
+            } else {
+              completed -= 1;
+              pending += 1;
+            }
+          });
+        },
+      ));
+    }
+    setState(() {
+      isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,210 +115,100 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         title: const Text("Goal Details"),
         backgroundColor: color_constants.primary,
       ),
-      body: Container(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              widget.goalData['title'],
-              style: GoogleFonts.notoSans(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: StreamBuilder(
-                stream: _firestore
-                    .collection('goals')
-                    .doc(userId)
-                    .collection('user_goals')
-                    .doc(widget.goalId)
-                    .collection('tasks')
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return Text('');
-                  }
-                  if (snapshot.hasError) {
-                    // Handle error
-                    return Text('Error: ${snapshot.error}');
-                  }
-                  var tasks = snapshot.data!.docs.reversed;
-                  print(tasks);
-                  List<Widget> compTasks = [];
-                  List<Widget> pendTasks = [];
-
-                  for (var task in tasks) {
-                    if (task['isCompleted']) {
-                      compTasks.add(TaskContainer(
-                          userId: userId,
-                          goalId: widget.goalId,
-                          taskId: task.id,
-                          taskTitle: task['taskTitle']));
-                    } else {
-                      pendTasks.add(TaskContainer(
-                          userId: userId,
-                          goalId: widget.goalId,
-                          taskId: task.id,
-                          taskTitle: task['taskTitle']));
-                    }
-                  }
-                  return Column(
+      body: isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Pending Tasks'),
-                      Expanded(
-                        child: ListView(
-                          children: pendTasks,
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.goalData['title'],
+                              style: GoogleFonts.notoSans(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(widget.goalData['type']),
+                          ],
                         ),
                       ),
-                      Text('Completed Tasks'),
-                      Expanded(
-                        child: ListView(
-                          children: compTasks,
-                        ),
-                      ),
+                      _buildCompletionPercentage(context, completed, pending)
                     ],
-                  );
-                },
+                  ),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: GoalStatusWidget(
+                            startDate:
+                                DateTime.parse(widget.goalData['startDate']),
+                            endDate:
+                                DateTime.parse(widget.goalData['endDate'])),
+                      ),
+                      PublicPrivateIndicator(
+                          visibility: widget.goalData['visibility']),
+                    ],
+                  ),
+                  ListView(
+                    shrinkWrap: true,
+                    children: taskWidgets,
+                  ),
+                ],
               ),
             ),
-            CircularPercentIndicator(
-              radius: 60.0,
-              lineWidth: 6.0,
-              animation: true,
-              percent: 0,
-              center: Text(
-                "${0.toStringAsFixed(1)}%",
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20.0,
-                ),
-              ),
-              circularStrokeCap: CircularStrokeCap.round,
-              progressColor: Colors.purple,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
 
 class TaskContainer extends StatefulWidget {
-  TaskContainer({
-    Key? key,
-    required this.userId,
-    required this.goalId,
-    required this.taskId,
-    required this.taskTitle,
-  });
+  TaskContainer(
+      {Key? key,
+      required this.taskId,
+      required this.taskTitle,
+      required this.tasksState,
+      required this.onCompletionChanged});
 
-  final String userId;
-  final String goalId;
   final String taskId;
   final String taskTitle;
+  final Map tasksState;
+  final Function(bool isCompleted) onCompletionChanged;
 
   @override
   State<TaskContainer> createState() => _TaskContainerState();
 }
 
 class _TaskContainerState extends State<TaskContainer> {
-  bool isCompleted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    fetchData();
-  }
-
-  void fetchData() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('goals')
-          .doc(widget.userId)
-          .collection('user_goals')
-          .doc(widget.goalId)
-          .collection('tasks')
-          .doc(widget.taskId)
-          .get();
-
-      if (snapshot.exists) {
-        // Document exists, update the state with the value of isCompleted
-        setState(() {
-          isCompleted = snapshot.data()?['isCompleted'] ?? false;
-        });
-      } else {
-        // Document does not exist, handle accordingly
-        setState(() {
-          isCompleted = false; // or another default value
-        });
-      }
-    } catch (error) {
-      // Handle errors
-      print('Error fetching data: $error');
-      setState(() {
-        isCompleted = false; // or another default value
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    DocumentReference taskRef = FirebaseFirestore.instance
-        .collection('goals')
-        .doc(widget.userId)
-        .collection('user_goals')
-        .doc(widget.goalId)
-        .collection('tasks')
-        .doc(widget.taskId);
-    DocumentReference goalRef = FirebaseFirestore.instance
-        .collection('goals')
-        .doc(widget.userId)
-        .collection('user_goals')
-        .doc(widget.goalId);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
           Checkbox(
-            value: isCompleted,
-            onChanged: (val) async {
-              try {
-                final snapshot = await taskRef.get();
-
-                if (snapshot.exists) {
-                  // Document exists, update the 'isCompleted' field
-                  await taskRef.update({
-                    'isCompleted': !(snapshot.data() as Map)['isCompleted']
-                  });
-                  setState(() {
-                    isCompleted = !(snapshot.data() as Map)['isCompleted'];
-                  });
-                  if (isCompleted) {
-                    await goalRef.update({
-                      'completed': FieldValue.increment(1),
-                      'pending': FieldValue.increment(-1),
-                    });
-                  } else {
-                    await goalRef.update({
-                      'completed': FieldValue.increment(-1),
-                      'pending': FieldValue.increment(1),
-                    });
-                  }
-                } else {
-                  print('Document does not exist.');
-                }
-              } catch (error) {
-                // Handle errors
-                print('Error updating data: $error');
-              }
+            value: widget.tasksState[widget.taskId],
+            onChanged: (val) {
+              setState(() {
+                widget.tasksState[widget.taskId] =
+                    !widget.tasksState[widget.taskId];
+                widget.onCompletionChanged(widget.tasksState[widget.taskId]);
+              });
             },
           ),
           Text(
             widget.taskTitle,
             style: TextStyle(
-              decoration: isCompleted
+              decoration: widget.tasksState[widget.taskId]
                   ? TextDecoration.lineThrough
                   : TextDecoration.none,
               fontFamily: GoogleFonts.notoSans().fontFamily,
@@ -241,6 +218,123 @@ class _TaskContainerState extends State<TaskContainer> {
           )
         ],
       ),
+    );
+  }
+}
+
+class PublicPrivateIndicator extends StatelessWidget {
+  const PublicPrivateIndicator({Key? key, required this.visibility})
+      : super(key: key);
+
+  final String visibility;
+
+  @override
+  Widget build(BuildContext context) {
+    Color indicatorColor;
+    Color TextColor;
+    IconData indicatorIcon;
+
+    // Set color and icon based on the visibility value
+    if (visibility == 'Public') {
+      indicatorColor = Colors.green.shade100;
+      TextColor = Colors.green.shade300;
+      indicatorIcon = Icons.public;
+    } else {
+      indicatorColor = Colors.red.shade100;
+      TextColor = Colors.red.shade300;
+      indicatorIcon = Icons.lock;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: indicatorColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min, // Adjust width to content
+        children: [
+          Text(
+            visibility.toUpperCase(),
+            style: TextStyle(
+                color: TextColor,
+                fontSize: 12), // Darker text color and reduced font size
+          ),
+          const SizedBox(width: 4),
+          Icon(indicatorIcon,
+              color: TextColor,
+              size: 16), // Darker icon color and reduced icon size
+        ],
+      ),
+    );
+  }
+}
+
+Widget _buildCompletionPercentage(
+    BuildContext context, int completed, int pending) {
+  return RichText(
+    text: TextSpan(
+      children: <TextSpan>[
+        TextSpan(
+          text: ((completed / (completed + pending)) * 100).toStringAsFixed(1),
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: color_constants.stage4,
+          ),
+        ),
+        const TextSpan(
+          text: '%',
+          style: TextStyle(
+            fontSize: 18,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class GoalStatusWidget extends StatelessWidget {
+  final DateTime startDate;
+  final DateTime endDate;
+
+  GoalStatusWidget({required this.startDate, required this.endDate});
+
+  String calculateGoalStatus() {
+    DateTime currentDate = DateTime.now();
+
+    if (currentDate.isBefore(startDate)) {
+      // Calculate days to start the goal
+      int daysToStart = startDate.difference(currentDate).inDays;
+      return '$daysToStart days to start the goal';
+    } else if (currentDate.isBefore(endDate)) {
+      // Calculate days remaining
+      int daysRemaining = endDate.difference(currentDate).inDays;
+      return '$daysRemaining days remaining';
+    } else {
+      return 'Goal time ended';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String goalStatus = calculateGoalStatus();
+    Color statusColor = Colors.black; // Default color
+
+    // Set color based on goal status
+    if (goalStatus.contains('to start')) {
+      statusColor = Colors.blue; // Choose a color for days to start
+    } else if (goalStatus.contains('remaining')) {
+      statusColor = Colors.green; // Choose a color for days remaining
+    } else {
+      statusColor = Colors.red; // Choose a color for goal time ended
+    }
+
+    return Text(
+      goalStatus,
+      style: TextStyle(
+          fontSize: 18, color: statusColor, fontWeight: FontWeight.bold),
     );
   }
 }
