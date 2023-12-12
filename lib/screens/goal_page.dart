@@ -5,9 +5,14 @@ import 'package:goal_quester/constants/color_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
-  GoalDetailsScreen({Key? key, required this.goalId, required this.goalData});
+  GoalDetailsScreen(
+      {Key? key,
+      required this.userId,
+      required this.goalId,
+      required this.goalData});
   final Map goalData;
   final String goalId;
+  final String userId;
 
   @override
   State<GoalDetailsScreen> createState() => _GoalDetailsScreenState();
@@ -25,7 +30,6 @@ class Task {
 }
 
 class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
-  final String userId = FirebaseAuth.instance.currentUser!.uid;
   List<TaskContainer> taskWidgets = [];
   Map taskState = {};
 
@@ -47,7 +51,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   void changeTasksState() {
     final snapshot = FirebaseFirestore.instance
         .collection('goals')
-        .doc(userId)
+        .doc(widget.userId)
         .collection('user_goals')
         .doc(widget.goalId)
         .collection('tasks');
@@ -56,7 +60,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     }
     FirebaseFirestore.instance
         .collection('goals')
-        .doc(userId)
+        .doc(widget.userId)
         .collection('user_goals')
         .doc(widget.goalId)
         .update({
@@ -68,7 +72,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   Future<void> fetchTasks() async {
     final snapshot = await FirebaseFirestore.instance
         .collection('goals')
-        .doc(userId)
+        .doc(widget.userId)
         .collection('user_goals')
         .doc(widget.goalId)
         .collection('tasks')
@@ -85,6 +89,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     }
     for (var element in snapshot.docs) {
       taskWidgets.add(TaskContainer(
+        userId: widget.userId,
         taskId: element.id,
         taskTitle: element['taskTitle'],
         tasksState: taskState,
@@ -172,13 +177,15 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
 }
 
 class TaskContainer extends StatefulWidget {
-  TaskContainer(
-      {Key? key,
+  const TaskContainer(
+      {super.key,
+      required this.userId,
       required this.taskId,
       required this.taskTitle,
       required this.tasksState,
       required this.onCompletionChanged});
 
+  final String userId;
   final String taskId;
   final String taskTitle;
   final Map tasksState;
@@ -197,13 +204,16 @@ class _TaskContainerState extends State<TaskContainer> {
         children: [
           Checkbox(
             value: widget.tasksState[widget.taskId],
-            onChanged: (val) {
-              setState(() {
-                widget.tasksState[widget.taskId] =
-                    !widget.tasksState[widget.taskId];
-                widget.onCompletionChanged(widget.tasksState[widget.taskId]);
-              });
-            },
+            onChanged: widget.userId != FirebaseAuth.instance.currentUser!.uid
+                ? null
+                : (val) {
+                    setState(() {
+                      widget.tasksState[widget.taskId] =
+                          !widget.tasksState[widget.taskId];
+                      widget.onCompletionChanged(
+                          widget.tasksState[widget.taskId]);
+                    });
+                  },
           ),
           Text(
             widget.taskTitle,

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:goal_quester/screens/image_widget.dart';
-import 'package:goal_quester/screens/user_profile.dart';
+import 'package:goal_quester/screens/Profile_Screen/user_profile.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);

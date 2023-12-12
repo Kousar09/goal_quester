@@ -8,7 +8,11 @@ class OneToOneChat extends StatefulWidget {
   final String userId;
   final Map userData;
 
-  const OneToOneChat({super.key, required this.userId, required this.userData});
+  OneToOneChat({
+    super.key,
+    required this.userId,
+    required this.userData,
+  });
 
   @override
   _OneToOneChatState createState() => _OneToOneChatState();
@@ -18,7 +22,7 @@ class _OneToOneChatState extends State<OneToOneChat> {
   final TextEditingController _messageController = TextEditingController();
   final String myUserId = FirebaseAuth.instance.currentUser!.uid;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+  int newMessagesCount = 0;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,6 +132,9 @@ class _OneToOneChatState extends State<OneToOneChat> {
     String messageText = _messageController.text.trim();
 
     if (messageText.isNotEmpty) {
+      setState(() {
+        newMessagesCount += 1;
+      });
       var messageId = Uuid().v1();
       _firestore
           .collection('messages/$myUserId/${widget.userId}')
@@ -145,7 +152,20 @@ class _OneToOneChatState extends State<OneToOneChat> {
         'type': 'recieved',
         'timestamp': DateTime.now().toString(),
       });
-
+      _firestore.collection('messages').doc(myUserId).set({
+        widget.userId: {
+          'lastmessage': messageText,
+          'timeStamp': DateTime.now().toString(),
+          'unseen': 0
+        }
+      });
+      _firestore.collection('messages').doc(widget.userId).set({
+        myUserId: {
+          'lastmessage': messageText,
+          'timeStamp': DateTime.now().toString(),
+          'unseen': newMessagesCount
+        }
+      });
       _messageController.clear();
     }
   }

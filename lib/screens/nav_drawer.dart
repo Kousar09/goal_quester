@@ -5,7 +5,6 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:goal_quester/screens/change_password_screen.dart';
 import 'package:goal_quester/screens/edit_profile_screen.dart';
-import 'package:goal_quester/screens/one_ot_one_chat.dart';
 import 'package:goal_quester/screens/starting_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 

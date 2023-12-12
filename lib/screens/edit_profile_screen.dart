@@ -33,7 +33,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late String? _gender = widget.userData['gender'];
   late String profileUrl = widget.userData['purl'];
   String userId = FirebaseAuth.instance.currentUser!.uid.toString();
-  @override
   Future<void> _updateUserData() async {
     try {
       String id = FirebaseAuth.instance.currentUser!.uid.toString();

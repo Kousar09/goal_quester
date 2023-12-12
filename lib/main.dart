@@ -7,7 +7,7 @@ import 'package:goal_quester/screens/starting_screen.dart';
 import 'firebase_options.dart';
 import 'package:goal_quester/screens/chats_page.dart';
 import 'package:goal_quester/screens/home_page.dart';
-import 'package:goal_quester/screens/profile_page.dart';
+import 'package:goal_quester/screens/Profile_Screen/profile_page.dart';
 import 'package:goal_quester/screens/search_page.dart';
 
 Future main() async {
