@@ -1,8 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:goal_quester/screens/Profile_Screen/get_goals.dart';
-import 'package:goal_quester/screens/Profile_Screen/user_profile_header.dart';
+import 'package:goal_quester/screens/Profile_Screen/profile_header.dart';
+import 'package:goal_quester/services/user_provider.dart';
+import 'package:provider/provider.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -13,27 +14,8 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
-  String fullName = '';
-  String purl = '';
-  String gender = '';
-  String myUserId = FirebaseAuth.instance.currentUser!.uid;
-
   late TabController _tabController;
-
-  Future<void> fetchUserData() async {
-    try {
-      var snapshot = await FirebaseFirestore.instance.collection('users').get();
-      for (var user in snapshot.docs) {
-        if (user.id == myUserId) {
-          fullName = user['fname'] + ' ' + user['lname'];
-          purl = user['purl'];
-          gender = user['gender'];
-        }
-      }
-    } catch (e) {
-      print('Error fetching user data: $e');
-    }
-  }
+  final myUserId = FirebaseAuth.instance.currentUser!.uid.toString();
 
   @override
   void initState() {
@@ -43,49 +25,50 @@ class _ProfilePageState extends State<ProfilePage>
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: fetchUserData(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Text('Error: ${snapshot.error}');
-        } else {
-          return Scaffold(
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                UserProfileHeader(
-                  fullName: fullName,
-                  purl: purl,
-                  userId: myUserId,
-                ),
-                TabBar(
+    return Consumer<UserProvider>(
+      builder: (context, user, _) {
+        return Scaffold(
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              ProfileHeader(
+                profileImageUrl: user.profileUrl,
+                username: '${user.firstName} ${user.lastName}',
+                postsCount: 5,
+                followersCount: user.followers.length,
+                followingCount: user.following.length,
+                isFollowing: false,
+                isFollowedBy: false,
+                isCurrentUser: true,
+                followers: user.followers,
+                following: user.following,
+                id: myUserId,
+              ),
+              TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(text: 'Public Goals'),
+                  Tab(text: 'Private Goals'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
                   controller: _tabController,
-                  tabs: [
-                    Tab(text: 'Public Goals'),
-                    Tab(text: 'Private Goals'),
+                  children: [
+                    GetGoals(
+                      type: 'Public',
+                      userId: myUserId,
+                    ),
+                    GetGoals(
+                      type: 'Private',
+                      userId: myUserId,
+                    ),
                   ],
                 ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      GetGoals(
-                        type: 'Public',
-                        userId: myUserId,
-                      ),
-                      GetGoals(
-                        type: 'Private',
-                        userId: myUserId,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
+              ),
+            ],
+          ),
+        );
       },
     );
   }

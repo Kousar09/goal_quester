@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,16 +10,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:goal_quester/constants/color_constants.dart';
+import 'package:goal_quester/services/user_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:line_icons/line_icons.dart';
+import 'package:provider/provider.dart';
 
 import '../main.dart';
 
 class EditProfilePage extends StatefulWidget {
-  EditProfilePage({super.key, required this.userData});
-  late Map<String, dynamic> userData = new Map();
+  EditProfilePage({super.key});
 
   @override
   _EditProfilePageState createState() => _EditProfilePageState();
@@ -28,10 +31,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   bool _image = false;
   File? selectedImage;
-  late String _firstName = widget.userData['fname'];
-  late String _lastName = widget.userData['lname'];
-  late String? _gender = widget.userData['gender'];
-  late String profileUrl = widget.userData['purl'];
+  String _firstName = '';
+  String _lastName = '';
+  String _gender = '';
+  String profileUrl = '';
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    final user = Provider.of<UserProvider>(context, listen: false);
+    _firstName = user.firstName;
+    _lastName = user.lastName;
+    _gender = user.gender;
+    profileUrl = user.profileUrl;
+  }
+
   String userId = FirebaseAuth.instance.currentUser!.uid.toString();
   Future<void> _updateUserData() async {
     try {
@@ -54,6 +69,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'gender': _gender,
         'purl': profileUrl,
       });
+      final user = Provider.of<UserProvider>(context, listen: false);
+      user.updateProfile(_firstName, _lastName, _gender, profileUrl);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text("Profile updated sucessfully!"),
       ));
@@ -62,7 +79,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           context, MaterialPageRoute(builder: (context) => const MyHomePage()));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Error Updating profile! " + e.toString()),
+        content: Text("Error Updating profile! $e"),
       ));
     }
   }
@@ -141,8 +158,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                     height: 100,
                                     width: 100,
                                   )
-                                : widget.userData['purl'] == ''
-                                    ? widget.userData['gender'] == 'Female'
+                                : profileUrl == ''
+                                    ? _gender == 'Female'
                                         ? SvgPicture.asset(
                                             'assets/images/profile_female.svg',
                                             height: 100,
@@ -154,7 +171,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                             width: 100,
                                           )
                                     : CachedNetworkImage(
-                                        imageUrl: widget.userData['purl'],
+                                        imageUrl: profileUrl,
                                         height: 100,
                                         width: 100,
                                         placeholder: (context, url) =>
@@ -204,7 +221,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   height: 5,
                 ),
                 TextFormField(
-                  initialValue: widget.userData['fname'],
+                  initialValue: _firstName,
                   decoration: const InputDecoration(
                       contentPadding: EdgeInsets.all(20),
                       filled: true,
@@ -232,7 +249,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   height: 5,
                 ),
                 TextFormField(
-                  initialValue: widget.userData['lname'],
+                  initialValue: _lastName,
                   decoration: const InputDecoration(
                       contentPadding: EdgeInsets.all(20),
                       filled: true,
@@ -266,14 +283,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       borderRadius: BorderRadius.circular(15),
                       color: const Color.fromARGB(255, 246, 237, 237)),
                   child: DropdownButtonFormField<String>(
-                    value: widget.userData['gender'],
+                    value: _gender,
                     items: ['Male', 'Female', 'Other'].map((String value) {
                       return DropdownMenuItem<String>(
                         value: value,
                         child: Text(value),
                       );
                     }).toList(),
-                    onChanged: (value) => setState(() => _gender = value),
+                    onChanged: (value) =>
+                        setState(() => _gender = value.toString()),
                   ),
                 ),
                 // TextFormField(

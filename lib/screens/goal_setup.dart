@@ -29,8 +29,8 @@ class _GoalSetUpState extends State<GoalSetUp> {
     'Short Term',
     'Others'
   ];
-  String startDate = '';
-  String endDate = '';
+  String startDate = DateTime.now().toString();
+  String endDate = DateTime.now().toString();
   bool isLoading = false;
 
   void _onSelectionChanged(DateRangePickerSelectionChangedArgs args) {
@@ -54,20 +54,42 @@ class _GoalSetUpState extends State<GoalSetUp> {
   Future<void> saveGoal() async {
     try {
       if (_formKey.currentState!.validate()) {
+        if (goalTitle == '' || goalType == 'Select an Option') {
+          // Show an error message if any required field is null
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Please fill in all the required fields"),
+              duration: Duration(seconds: 1),
+            ),
+          );
+          return;
+        }
+        if (DateTime.parse(startDate).isAfter(DateTime.parse(endDate))) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Enter valid start and end Dates "),
+              duration: Duration(seconds: 1),
+            ),
+          );
+          return;
+        }
         setState(() {
           isLoading = true;
         });
         final String userId = FirebaseAuth.instance.currentUser!.uid;
         final String goalId = const Uuid().v1();
-        final CollectionReference goalsCollection = FirebaseFirestore.instance
-            .collection('goals')
-            .doc(userId)
-            .collection('user_goals');
-        final DocumentReference goalDocRef = goalsCollection.doc(goalId);
+        final CollectionReference goalsCollection =
+            FirebaseFirestore.instance.collection('goals');
 
+        final DocumentReference goalDocRef = goalsCollection.doc(goalId);
+        List<String> titleWords =
+            removeStopWords(goalTitle).toLowerCase().split(' ');
+        titleWords = titleWords + removeStopWords(goalType).split(" ");
 // Save goal data
         await goalDocRef.set({
+          "userId": userId,
           "title": goalTitle,
+          "titleWords": titleWords,
           "totalTasks": tasks.length,
           "completed": 0,
           "pending": tasks.length,
@@ -81,11 +103,15 @@ class _GoalSetUpState extends State<GoalSetUp> {
 // Save individual tasks
         for (final String task in taskTitles) {
           final String taskId = const Uuid().v1();
-          await goalDocRef
-              .collection('tasks')
-              .doc(taskId)
-              .set({"taskTitle": task, "isCompleted": false});
+          titleWords = titleWords + removeStopWords(task).split(" ");
+          await goalDocRef.collection('tasks').doc(taskId).set({
+            "taskTitle": task,
+            "isCompleted": false,
+            'createdAt': DateTime.now()
+          });
         }
+
+        goalDocRef.update({'titleWords': titleWords});
 
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
@@ -104,6 +130,178 @@ class _GoalSetUpState extends State<GoalSetUp> {
     }
   }
 
+  String removeStopWords(String text) {
+    // Define a list of stop words
+    List<String> stopWords = [
+      'i',
+      'me',
+      'my',
+      'myself',
+      'we',
+      'our',
+      'ours',
+      'ourselves',
+      'you',
+      'your',
+      'yours',
+      'yourself',
+      'yourselves',
+      'he',
+      'him',
+      'his',
+      'himself',
+      'she',
+      'her',
+      'hers',
+      'herself',
+      'it',
+      'its',
+      'itself',
+      'they',
+      'them',
+      'their',
+      'theirs',
+      'themselves',
+      'what',
+      'which',
+      'who',
+      'whom',
+      'this',
+      'that',
+      'these',
+      'those',
+      'am',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'being',
+      'have',
+      'has',
+      'had',
+      'having',
+      'do',
+      'does',
+      'did',
+      'doing',
+      'a',
+      'an',
+      'the',
+      'and',
+      'but',
+      'if',
+      'or',
+      'because',
+      'as',
+      'until',
+      'while',
+      'of',
+      'at',
+      'by',
+      'for',
+      'with',
+      'about',
+      'against',
+      'between',
+      'into',
+      'through',
+      'during',
+      'before',
+      'after',
+      'above',
+      'below',
+      'to',
+      'from',
+      'up',
+      'down',
+      'in',
+      'out',
+      'on',
+      'off',
+      'over',
+      'under',
+      'again',
+      'further',
+      'then',
+      'once',
+      'here',
+      'there',
+      'when',
+      'where',
+      'why',
+      'how',
+      'all',
+      'any',
+      'both',
+      'each',
+      'few',
+      'more',
+      'most',
+      'other',
+      'some',
+      'such',
+      'no',
+      'nor',
+      'not',
+      'only',
+      'own',
+      'same',
+      'so',
+      'than',
+      'too',
+      'very',
+      's',
+      't',
+      'can',
+      'will',
+      'just',
+      'don',
+      'should',
+      'now',
+      'd',
+      'll',
+      'm',
+      'o',
+      're',
+      've',
+      'y',
+      'ain',
+      'aren',
+      'couldn',
+      'didn',
+      'doesn',
+      'hadn',
+      'hasn',
+      'haven',
+      'isn',
+      'ma',
+      'mightn',
+      'mustn',
+      'needn',
+      'shan',
+      'shouldn',
+      'wasn',
+      'weren',
+      'won',
+      'wouldn',
+      'related'
+    ];
+
+    // Split the text into words
+    List<String> words = text.toLowerCase().split(' ');
+
+    // Remove stop words
+    List<String> filteredWords =
+        words.where((word) => !stopWords.contains(word)).toList();
+
+    // Join the filtered words back into a sentence
+    String result = filteredWords.join(' ');
+
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final double width = MediaQuery.of(context).size.width;
@@ -120,10 +318,43 @@ class _GoalSetUpState extends State<GoalSetUp> {
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       buildGoalTitleTextField(),
                       const SizedBox(height: 20),
-                      buildDatePicker(),
+                      Text(
+                        "Select start and end Date",
+                        style: GoogleFonts.notoSans(
+                            textStyle: const TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          DateInputField(
+                              date: DateTime.parse(startDate),
+                              onDateSelected: (date) {
+                                setState(() {
+                                  startDate = date.toString();
+                                });
+                              }),
+                          Text(
+                            'To',
+                            style: GoogleFonts.notoSans(
+                                fontWeight: FontWeight.w500),
+                          ),
+                          DateInputField(
+                              date: DateTime.parse(endDate),
+                              onDateSelected: (date) {
+                                setState(() {
+                                  endDate = date.toString();
+                                });
+                              }),
+                        ],
+                      ),
                       const SizedBox(height: 20),
                       buildGoalTypeDropDown(),
                       buildGoalVisibilityDropDown(),
@@ -277,6 +508,7 @@ class _GoalSetUpState extends State<GoalSetUp> {
               borderRadius: BorderRadius.circular(15),
               color: const Color.fromARGB(255, 246, 237, 237)),
           child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return "Goal title should not be empty";
@@ -377,7 +609,7 @@ class _GoalSetUpState extends State<GoalSetUp> {
 }
 
 class Task extends StatefulWidget {
-  Task({Key? key, required this.taskTitles, required this.index})
+  const Task({Key? key, required this.taskTitles, required this.index})
       : super(key: key);
 
   final List<String> taskTitles;
@@ -399,6 +631,7 @@ class _TaskState extends State<Task> {
           Checkbox(value: false, onChanged: (val) => {}),
           Expanded(
             child: TextFormField(
+              textCapitalization: TextCapitalization.sentences,
               initialValue: widget.taskTitles[widget.index],
               onChanged: (value) {
                 widget.taskTitles[widget.index] = value;
@@ -408,6 +641,64 @@ class _TaskState extends State<Task> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class DateInputField extends StatelessWidget {
+  final DateTime date;
+  final Function(DateTime) onDateSelected;
+
+  const DateInputField({super.key, 
+    required this.date,
+    required this.onDateSelected,
+  });
+
+  Future<void> _selectDate(BuildContext context) async {
+    DateTime? selectedDate = await showModalBottomSheet(
+      context: context,
+      builder: (BuildContext builder) {
+        return Container(
+          padding: const EdgeInsets.all(8),
+          height: MediaQuery.of(context).copyWith().size.height / 3,
+          child: SfDateRangePicker(
+            initialSelectedDates: [date],
+            onSelectionChanged: (DateRangePickerSelectionChangedArgs args) {
+              Navigator.pop(context, args.value);
+            },
+            selectionMode: DateRangePickerSelectionMode.single,
+          ),
+        );
+      },
+    );
+
+    if (selectedDate != null) {
+      onDateSelected(selectedDate);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        _selectDate(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(8),
+            color: const Color.fromARGB(255, 246, 237, 237)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}",
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
       ),
     );
   }

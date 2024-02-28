@@ -2,11 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:goal_quester/constants/color_constants.dart';
+import 'package:goal_quester/screens/edit_goal_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
-  GoalDetailsScreen(
-      {Key? key,
+  const GoalDetailsScreen(
+      {super.key,
       required this.userId,
       required this.goalId,
       required this.goalData});
@@ -51,19 +52,12 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   void changeTasksState() {
     final snapshot = FirebaseFirestore.instance
         .collection('goals')
-        .doc(widget.userId)
-        .collection('user_goals')
         .doc(widget.goalId)
         .collection('tasks');
     for (var task in taskState.entries) {
       snapshot.doc(task.key).update({'isCompleted': task.value});
     }
-    FirebaseFirestore.instance
-        .collection('goals')
-        .doc(widget.userId)
-        .collection('user_goals')
-        .doc(widget.goalId)
-        .update({
+    FirebaseFirestore.instance.collection('goals').doc(widget.goalId).update({
       'completed': completed,
       'pending': pending,
     });
@@ -72,8 +66,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   Future<void> fetchTasks() async {
     final snapshot = await FirebaseFirestore.instance
         .collection('goals')
-        .doc(widget.userId)
-        .collection('user_goals')
         .doc(widget.goalId)
         .collection('tasks')
         .get();
@@ -118,6 +110,23 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       appBar: AppBar(
         foregroundColor: Colors.white,
         title: const Text("Goal Details"),
+        actions: <Widget>[
+          PopupMenuButton<String>(
+            onSelected: handleClick,
+            itemBuilder: (BuildContext context) {
+              return {
+                'Set as ${widget.goalData['visibility'] == 'Public' ? 'Private' : 'Public'}',
+                'Edit goal',
+                'Delete goal'
+              }.map((String choice) {
+                return PopupMenuItem<String>(
+                  value: choice,
+                  child: Text(choice),
+                );
+              }).toList();
+            },
+          ),
+        ],
         backgroundColor: color_constants.primary,
       ),
       body: isLoading
@@ -150,7 +159,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                       _buildCompletionPercentage(context, completed, pending)
                     ],
                   ),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -172,6 +181,65 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  void handleClick(String value) {
+    if (value == 'Set as Public') {
+      FirebaseFirestore.instance
+          .collection('goals')
+          .doc(widget.goalId)
+          .update({'visibility': 'Public'});
+      setState(() {
+        widget.goalData['visibility'] = 'Public';
+      });
+    } else if (value == 'Set as Private') {
+      FirebaseFirestore.instance
+          .collection('goals')
+          .doc(widget.goalId)
+          .update({'visibility': 'Private'});
+      setState(() {
+        widget.goalData['visibility'] = 'Private';
+      });
+    } else if (value == 'Delete goal') {
+      _showDeleteConfirmationDialog(context);
+    } else if (value == "Edit goal") {
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  EditGoal(goalData: widget.goalData, goalId: widget.goalId)));
+    }
+  }
+
+  void _showDeleteConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Goal'),
+          content: const Text('Are you sure you want to delete this goal?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+              },
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the confirmation dialog
+                FirebaseFirestore.instance
+                    .collection('goals')
+                    .doc(widget.goalId)
+                    .delete();
+                Navigator.pop(context);
+              },
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -309,7 +377,8 @@ class GoalStatusWidget extends StatelessWidget {
   final DateTime startDate;
   final DateTime endDate;
 
-  GoalStatusWidget({required this.startDate, required this.endDate});
+  const GoalStatusWidget(
+      {super.key, required this.startDate, required this.endDate});
 
   String calculateGoalStatus() {
     DateTime currentDate = DateTime.now();

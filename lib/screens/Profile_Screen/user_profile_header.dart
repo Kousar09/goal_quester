@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:goal_quester/constants/color_constants.dart';
+import 'package:goal_quester/screens/image_widget.dart';
 import 'package:goal_quester/screens/one_ot_one_chat.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -10,18 +10,28 @@ class UserProfileHeader extends StatelessWidget {
     Key? key,
     required this.fullName,
     required this.purl,
+    required this.gender,
     required this.userId,
   }) : super(key: key);
 
   final String fullName;
   final String purl;
   final String userId;
+  final String gender;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        UserProfileImage(purl: purl),
+        Container(
+          margin: const EdgeInsets.all(10),
+          child: ProfileImage(
+              purl: purl,
+              gender: gender,
+              height: 80,
+              width: 80,
+              borderRadius: 40),
+        ),
         const SizedBox(width: 10),
         Column(
           children: [
@@ -35,41 +45,10 @@ class UserProfileHeader extends StatelessWidget {
             (userId != FirebaseAuth.instance.currentUser!.uid)
                 ? _buildMessageButton(
                     context, userId, {'name': fullName, 'purl': purl})
-                : Text(''),
+                : const Text(''),
           ],
         )
       ],
-    );
-  }
-}
-
-class UserProfileImage extends StatelessWidget {
-  const UserProfileImage({Key? key, required this.purl}) : super(key: key);
-
-  final String purl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Container(
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.purple,
-            width: 2.0,
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(40),
-          child: CachedNetworkImage(
-            imageUrl: purl,
-            height: 80,
-            width: 80,
-          ),
-        ),
-      ),
     );
   }
 }

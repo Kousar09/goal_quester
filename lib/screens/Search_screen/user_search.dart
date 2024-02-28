@@ -1,18 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:goal_quester/screens/image_widget.dart';
 import 'package:goal_quester/screens/Profile_Screen/user_profile.dart';
+import 'package:goal_quester/screens/image_widget.dart';
 
-class SearchPage extends StatefulWidget {
-  const SearchPage({Key? key}) : super(key: key);
+class UserSearch extends StatefulWidget {
+  const UserSearch({super.key});
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  State<UserSearch> createState() => _UserSearchState();
 }
 
-class _SearchPageState extends State<SearchPage> {
-  TextEditingController _searchController = TextEditingController();
-
+class _UserSearchState extends State<UserSearch> {
+  final TextEditingController _searchController = TextEditingController();
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -49,9 +48,7 @@ class _SearchPageState extends State<SearchPage> {
                 border: InputBorder.none, // Remove default border
               ),
               onChanged: (val) {
-                setState(() {
-                  // Your search logic here
-                });
+                setState(() {});
               },
             ),
           ),
@@ -79,7 +76,7 @@ class _SearchPageState extends State<SearchPage> {
         stream: FirebaseFirestore.instance
             .collection('users')
             .where('fname', isGreaterThanOrEqualTo: _searchController.text)
-            .where('fname', isLessThan: _searchController.text + 'z')
+            .where('fname', isLessThan: '${_searchController.text}z')
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -99,7 +96,7 @@ class _SearchPageState extends State<SearchPage> {
           for (var user in data) {
             userWidgets.add(UserContainer(
               id: user.id,
-              name: user['fname'] + user['lname'],
+              name: user['fname'] + ' ' + user['lname'],
               purl: user['purl'],
               gender: user['gender'],
             ));
@@ -107,10 +104,12 @@ class _SearchPageState extends State<SearchPage> {
 
           return Column(
             children: [
-              Text(
-                '${userWidgets.length} user${userWidgets.length == 1 ? '' : 's'} found',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+              _searchController.text.isNotEmpty
+                  ? Text(
+                      '${userWidgets.length} user${userWidgets.length == 1 ? '' : 's'} found',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    )
+                  : const SizedBox.shrink(),
               Expanded(
                 child: ListView(
                   children: userWidgets,

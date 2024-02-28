@@ -1,8 +1,14 @@
+// ignore_for_file: use_build_context_synchronously
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:goal_quester/main.dart';
 import 'package:goal_quester/screens/collect_profile_details.dart';
 import 'package:goal_quester/screens/login_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,7 +21,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
   var email = '';
   var password = '';
   final GlobalKey<FormState> _formKey = GlobalKey();
-  bool _isLoading = false;
+  final bool _isLoading = false;
+  String? _errorMessage; // Add this line for error message
+
+  Future<void> signUpWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleSignInAccount =
+          await GoogleSignIn().signIn();
+      final GoogleSignInAuthentication googleSignInAuthentication =
+          await googleSignInAccount!.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleSignInAuthentication.accessToken,
+        idToken: googleSignInAuthentication.idToken,
+      );
+
+      final UserCredential authResult =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final User? user = authResult.user;
+
+      if (authResult.additionalUserInfo!.isNewUser) {
+        if (user != null) {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const ProfileDetails()));
+        }
+      } else {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const MyHomePage()));
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString(); // Set error message state
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -149,6 +188,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(
                     height: 10,
                   ),
+                  _errorMessage !=
+                          null // Add this condition for displaying error message
+                      ? Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              color: Colors.red,
+                            ),
+                          ),
+                        )
+                      : SizedBox(), // Placeholder SizedBox
                   _isLoading
                       ? const SpinKitThreeInOut(
                           color: Color(0xFFF765A3),
@@ -157,12 +208,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       : SizedBox(
                           width: width - 40,
                           child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
+                              onPressed: () async {
+                                setState(() {
+                                  _errorMessage = null; // Reset error message
+                                });
+                                try {
+                                  final newUser = await FirebaseAuth.instance
+                                      .createUserWithEmailAndPassword(
+                                    email: email,
+                                    password: password,
+                                  );
+                                  Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (context) => ProfileDetails(
-                                            email: email, pass: password)));
+                                        builder: (context) => ProfileDetails()),
+                                  );
+                                } catch (e) {
+                                  setState(() {
+                                    if (e is FirebaseAuthException) {
+                                      switch (e.code) {
+                                        case 'weak-password':
+                                          _errorMessage =
+                                              'The password provided is too weak.';
+                                          break;
+                                        case 'email-already-in-use':
+                                          _errorMessage =
+                                              'The account already exists for that email.';
+                                          break;
+                                        case 'invalid-email':
+                                          _errorMessage =
+                                              'The email address is invalid.';
+                                          break;
+                                        default:
+                                          _errorMessage =
+                                              'An error occurred while signing up.';
+                                      }
+                                    } else {
+                                      _errorMessage =
+                                          'An error occurred while signing up: $e';
+                                    }
+                                  });
+                                }
                               },
                               style: ElevatedButton.styleFrom(
                                   shadowColor: Colors.transparent,
@@ -181,9 +267,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 style: TextStyle(color: Colors.white),
                               )),
                         ),
-                  const SizedBox(
-                    height: 10,
+                  const SizedBox(height: 15),
+                  const Center(child: Text('Or with')),
+                  const SizedBox(height: 15),
+                  Container(
+                    width: double.maxFinite,
+                    height: 56,
+                    decoration: BoxDecoration(
+                        border:
+                            Border.all(color: Colors.grey.shade300, width: 1),
+                        borderRadius: BorderRadius.circular(16)),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        signUpWithGoogle();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        shadowColor: Colors.transparent,
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.0),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SvgPicture.asset(
+                            'assets/ic_googleLogo.svg',
+                            height: 24.0, // Adjust the height as needed
+                            width: 24.0, // Adjust the width as needed
+                          ),
+                          const SizedBox(
+                            width: 10,
+                          ),
+                          const Text(
+                            'Sign Up with Google',
+                            style: TextStyle(color: Colors.black, fontSize: 20),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 15),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

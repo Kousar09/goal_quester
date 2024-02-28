@@ -48,7 +48,7 @@ class ProfileImage extends StatelessWidget {
                       imageUrl: purl,
                       height: height,
                       width: width,
-                      placeholder: (context, url) => SpinKitPulse(
+                      placeholder: (context, url) => const SpinKitPulse(
                         color: Colors.purpleAccent,
                         size: 50.0,
                       ),

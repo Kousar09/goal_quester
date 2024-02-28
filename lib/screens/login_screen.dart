@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:goal_quester/main.dart';
 import 'package:goal_quester/screens/register_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../constants/color_constants.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,6 +21,36 @@ class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey();
   bool _isLoading = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  Future<void> signUpWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleSignInAccount =
+          await GoogleSignIn().signIn();
+      final GoogleSignInAuthentication googleSignInAuthentication =
+          await googleSignInAccount!.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleSignInAuthentication.accessToken,
+        idToken: googleSignInAuthentication.idToken,
+      );
+
+      final UserCredential authResult =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final User? user = authResult.user;
+
+      if (authResult.additionalUserInfo!.isNewUser) {
+        if (user != null) {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const MyHomePage()));
+        }
+      } else {
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => const MyHomePage()));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         context,
                                         MaterialPageRoute(
                                             builder: (context) =>
-                                                const MyHomePage()));
+                                                const MyApp()));
                                   } catch (e) {
                                     setState(() {
                                       _isLoading = false;
@@ -226,9 +258,47 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(color: Colors.white),
                               )),
                         ),
-                  const SizedBox(
-                    height: 10,
+                  const SizedBox(height: 15),
+                  const Center(child: Text('Or')),
+                  const SizedBox(height: 15),
+                  Container(
+                    width: double.maxFinite,
+                    height: 56,
+                    decoration: BoxDecoration(
+                        border:
+                            Border.all(color: Colors.grey.shade300, width: 1),
+                        borderRadius: BorderRadius.circular(16)),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        signUpWithGoogle();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        shadowColor: Colors.transparent,
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.0),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SvgPicture.asset(
+                            'assets/ic_googleLogo.svg',
+                            height: 24.0, // Adjust the height as needed
+                            width: 24.0, // Adjust the width as needed
+                          ),
+                          const SizedBox(
+                            width: 10,
+                          ),
+                          const Text(
+                            'Sign In with Google',
+                            style: TextStyle(color: Colors.black, fontSize: 20),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 15),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

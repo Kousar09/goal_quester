@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:goal_quester/screens/Profile_Screen/user_profile.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
@@ -8,7 +9,7 @@ class OneToOneChat extends StatefulWidget {
   final String userId;
   final Map userData;
 
-  OneToOneChat({
+  const OneToOneChat({
     super.key,
     required this.userId,
     required this.userData,
@@ -22,6 +23,9 @@ class _OneToOneChatState extends State<OneToOneChat> {
   final TextEditingController _messageController = TextEditingController();
   final String myUserId = FirebaseAuth.instance.currentUser!.uid;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final DateTime now = DateTime.now();
+  DateTime previousDate =
+      DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
   int newMessagesCount = 0;
   @override
   Widget build(BuildContext context) {
@@ -49,7 +53,7 @@ class _OneToOneChatState extends State<OneToOneChat> {
                 for (var message in messages) {
                   var messageText = message['text'];
                   var messageType = message['type'];
-                  var timestamp = message['timestamp'];
+                  var timestamp = DateTime.parse(message['timestamp']);
 
                   var messageWidget = MessageWidget(
                       id: message.id,
@@ -57,8 +61,29 @@ class _OneToOneChatState extends State<OneToOneChat> {
                       path2: 'messages/${widget.userId}/$myUserId',
                       type: messageType,
                       text: messageText,
-                      timestamp: timestamp);
+                      timestamp: timestamp.toString());
                   messageWidgets.add(messageWidget);
+                  // Extract message date
+                  DateTime messageDate =
+                      DateTime(timestamp.year, timestamp.month, timestamp.day);
+
+                  // Check if the current message date is different from the previous one
+                  if (previousDate !=
+                          DateTime(DateTime.now().year, DateTime.now().month,
+                              DateTime.now().day) ||
+                      messageDate != previousDate) {
+                    // Add a Text widget to display the current message date
+                    messageWidgets.add(
+                      Center(
+                        child: Text(
+                          DateFormat('dd/MM/yyyy').format(messageDate),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+                    // Update the previous date to the current message date
+                    previousDate = messageDate;
+                  }
                 }
 
                 return ListView(
@@ -79,7 +104,12 @@ class _OneToOneChatState extends State<OneToOneChat> {
       transform: Matrix4.translationValues(-25, 0, 0),
       child: GestureDetector(
         onTap: () {
-          // Handle user profile tap
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => UserProfile(
+                        userId: widget.userId,
+                      )));
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -110,7 +140,7 @@ class _OneToOneChatState extends State<OneToOneChat> {
         children: [
           Expanded(
             child: TextField(
-              keyboardType: TextInputType.text,
+              textCapitalization: TextCapitalization.sentences,
               controller: _messageController,
               decoration: const InputDecoration(
                 hintText: 'Enter your message...',
@@ -135,7 +165,7 @@ class _OneToOneChatState extends State<OneToOneChat> {
       setState(() {
         newMessagesCount += 1;
       });
-      var messageId = Uuid().v1();
+      var messageId = const Uuid().v1();
       _firestore
           .collection('messages/$myUserId/${widget.userId}')
           .doc(messageId)
@@ -171,6 +201,30 @@ class _OneToOneChatState extends State<OneToOneChat> {
   }
 }
 
+class DateHeaderWidget extends StatelessWidget {
+  final DateTime date;
+
+  const DateHeaderWidget({super.key, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      color: Colors.grey[300],
+      child: Text(
+        _formatDate(date),
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    // Logic to format the date as required
+    // You can use intl package for more sophisticated formatting
+    return DateFormat('dd/MM/yyyy').format(date);
+  }
+}
+
 class MessageWidget extends StatelessWidget {
   MessageWidget({
     super.key,
@@ -191,7 +245,7 @@ class MessageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    void _showCustomMenu() {
+    void showCustomMenu() {
       final RenderObject? overlay =
           Overlay.of(context).context.findRenderObject();
 
@@ -209,14 +263,14 @@ class MessageWidget extends StatelessWidget {
               ));
     }
 
-    void _storePosition(TapDownDetails details) {
+    void storePosition(TapDownDetails details) {
       _tapPosition = details.globalPosition;
     }
 
     bool isSent = type == 'sent';
     return GestureDetector(
-      onLongPress: _showCustomMenu,
-      onTapDown: _storePosition,
+      onLongPress: showCustomMenu,
+      onTapDown: storePosition,
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(

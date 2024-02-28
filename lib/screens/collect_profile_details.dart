@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,15 +8,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:goal_quester/main.dart';
+import 'package:goal_quester/services/user_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:line_icons/line_icons.dart';
+import 'package:provider/provider.dart';
 
 class ProfileDetails extends StatefulWidget {
-  const ProfileDetails({super.key, required this.email, required this.pass});
-  final String email;
-  final String pass;
+  const ProfileDetails({super.key});
+
   @override
   State<ProfileDetails> createState() => _ProfileDetailsState();
 }
@@ -62,9 +65,7 @@ class _ProfileDetailsState extends State<ProfileDetails> {
         loading = true;
       });
       try {
-        final newUser = await _auth.createUserWithEmailAndPassword(
-            email: widget.email, password: widget.pass);
-        String id = newUser.user!.uid.toString();
+        String id = FirebaseAuth.instance.currentUser!.uid.toString();
         final imagesRef =
             FirebaseStorage.instance.ref().child("profile_images/$id.jpeg");
         if (selectedImage != null) {
@@ -78,15 +79,17 @@ class _ProfileDetailsState extends State<ProfileDetails> {
           }
         }
 
-        await _firestore.collection('users').doc(newUser.user!.uid).set({
+        await _firestore.collection('users').doc(id).set({
           'fname': _fname,
           'lname': _lname,
-          'email': widget.email,
+          'email': _auth.currentUser!.email,
           'gender': gender,
           'purl': profileUrl
         });
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const MyHomePage()));
+        final user = Provider.of<UserProvider>(context, listen: false);
+        user.updateProfile(_fname, _lname, gender, profileUrl);
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => const MyApp()));
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Sign up successfull')));
       } on FirebaseAuthException catch (e) {
@@ -238,7 +241,7 @@ class _ProfileDetailsState extends State<ProfileDetails> {
                               borderSide: BorderSide.none),
                           prefixIcon: Icon(
                             LineIcons.user,
-                            color: const Color.fromARGB(255, 214, 56, 185),
+                            color: Color.fromARGB(255, 214, 56, 185),
                           ),
                           hintText: "First Name"),
                     ),
@@ -276,7 +279,7 @@ class _ProfileDetailsState extends State<ProfileDetails> {
                               borderSide: BorderSide.none),
                           prefixIcon: Icon(
                             LineIcons.user,
-                            color: const Color.fromARGB(255, 214, 56, 185),
+                            color: Color.fromARGB(255, 214, 56, 185),
                           ),
                           hintText: "Last Name"),
                     ),
@@ -319,8 +322,8 @@ class _ProfileDetailsState extends State<ProfileDetails> {
                       },
                       items: GenderCategories.map((location) {
                         return DropdownMenuItem(
-                          child: new Text(location),
                           value: location,
+                          child: Text(location),
                         );
                       }).toList(),
                     ),
@@ -331,7 +334,7 @@ class _ProfileDetailsState extends State<ProfileDetails> {
                   const SizedBox(height: 10.0),
                   loading
                       ? const SpinKitThreeInOut(
-                          color: const Color.fromARGB(255, 214, 56, 185),
+                          color: Color.fromARGB(255, 214, 56, 185),
                           size: 30.0,
                         )
                       : SizedBox(
