@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:goal_quester/screens/nav_drawer.dart';
 import 'package:goal_quester/screens/starting_screen.dart';
+import 'package:goal_quester/screens/suggestions_page.dart';
 import 'package:goal_quester/services/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
@@ -63,6 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final List<Widget> _contentShown = [
     const HomePage(),
     ChatsPage(),
+    SuggestionsScreen(),
     const SearchPage(),
     const ProfilePage()
   ];
@@ -91,6 +93,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     label: "Home",
                     backgroundColor: Colors.deepPurple),
                 BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chats"),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.people), label: "Resembling"),
                 BottomNavigationBarItem(
                     icon: Icon(Icons.search), label: "Search"),
                 BottomNavigationBarItem(

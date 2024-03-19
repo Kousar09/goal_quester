@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:goal_quester/constants/color_constants.dart';
 import 'package:goal_quester/screens/edit_goal_page.dart';
+import 'package:goal_quester/services/user_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
   const GoalDetailsScreen(
@@ -227,12 +229,27 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               child: const Text('No'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the confirmation dialog
+              onPressed: () async {
+                Navigator.pop(context);
+                QuerySnapshot tasks = await FirebaseFirestore.instance
+                    .collection('goals')
+                    .doc(widget.goalId)
+                    .collection('tasks')
+                    .get();
+                for (var task in tasks.docs) {
+                  FirebaseFirestore.instance
+                      .collection('goals')
+                      .doc(widget.goalId)
+                      .collection('tasks')
+                      .doc(task.id)
+                      .delete();
+                }
                 FirebaseFirestore.instance
                     .collection('goals')
                     .doc(widget.goalId)
                     .delete();
+                final user = Provider.of<UserProvider>(context, listen: false);
+                user.decrementGoalCOunt();
                 Navigator.pop(context);
               },
               child: const Text('Yes'),

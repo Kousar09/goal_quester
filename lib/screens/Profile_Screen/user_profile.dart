@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:goal_quester/methods/myMethods.dart';
 import 'package:goal_quester/screens/Profile_Screen/get_goals.dart';
 import 'package:goal_quester/screens/Profile_Screen/profile_header.dart';
 
@@ -18,6 +19,7 @@ class _UserProfileState extends State<UserProfile> {
   String purl = '';
   bool isLoading = true;
   String gender = '';
+  int goalsCount = 0;
   String myuid = FirebaseAuth.instance.currentUser!.uid.toString();
 
   @override
@@ -29,34 +31,31 @@ class _UserProfileState extends State<UserProfile> {
   void fetchUserData() async {
     try {
       setState(() {
-        isLoading = true; // Set isLoading to true before fetching data
+        isLoading = true;
       });
 
-      var snapshot = await FirebaseFirestore.instance.collection('users').get();
-      for (var user in snapshot.docs) {
-        if (user.id == widget.userId) {
-          setState(() {
-            fullName = user['fname'] + ' ' + user['lname'];
-            purl = user['purl'];
-            gender = user['gender'];
-            followers = List<String>.from(user['followers'] ?? []);
-            following = List<String>.from(user['following'] ?? []);
-            isLoading = false; // Set isLoading to false after fetching data
-          });
-          return; // Exit loop once user data is found
-        }
+      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
+
+      if (userSnapshot.exists) {
+        setState(() {
+          fullName = userSnapshot['fname'] + ' ' + userSnapshot['lname'];
+          purl = userSnapshot['purl'];
+          gender = userSnapshot['gender'];
+          followers = List<String>.from(userSnapshot['followers'] ?? []);
+          following = List<String>.from(userSnapshot['following'] ?? []);
+        });
+
+        goalsCount = await updateGoalsCount(widget.userId);
       }
-
-      // If the loop completes without finding user data, handle appropriately
-      // For example, show a message indicating user data was not found
     } catch (e) {
-      // Handle any errors that occurred during the data fetching process
-      setState(() {
-        // Update state to reflect error condition
-        isLoading = false; // Set isLoading to false to stop loading indicator
-        // You might want to display an error message to the user or handle the error in another way
-      });
       print('Error fetching user data: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -77,7 +76,7 @@ class _UserProfileState extends State<UserProfile> {
                     profileImageUrl: purl,
                     id: widget.userId,
                     username: fullName,
-                    postsCount: 5,
+                    postsCount: goalsCount,
                     followers: followers,
                     following: following,
                     followersCount: followers.length,

@@ -34,7 +34,7 @@ class _ProfilePageState extends State<ProfilePage>
               ProfileHeader(
                 profileImageUrl: user.profileUrl,
                 username: '${user.firstName} ${user.lastName}',
-                postsCount: 5,
+                postsCount: user.goalsCount,
                 followersCount: user.followers.length,
                 followingCount: user.following.length,
                 isFollowing: false,

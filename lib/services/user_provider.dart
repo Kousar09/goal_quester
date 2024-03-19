@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:goal_quester/methods/myMethods.dart';
 import 'package:logger/logger.dart';
 
 class UserProvider with ChangeNotifier {
@@ -14,12 +15,23 @@ class UserProvider with ChangeNotifier {
   late List<String> _followers;
   late List<String> _following;
   bool _isLoading = false;
+  int _goalsCount = 0;
+  int get goalsCount => _goalsCount;
 
   UserProvider() {
     // Call _loadUserData() method when an instance of UserProvider is created.
     _userId = FirebaseAuth.instance.currentUser!.uid.toString();
     Logger().d(_userId);
     _loadUserData();
+  }
+  incrementGoalCount() {
+    _goalsCount++;
+    notifyListeners();
+  }
+
+  decrementGoalCOunt() {
+    _goalsCount--;
+    notifyListeners();
   }
 
   Future<void> _loadUserData() async {
@@ -46,6 +58,9 @@ class UserProvider with ChangeNotifier {
       // Load followers and following lists
       _followers = List<String>.from(data['followers'] ?? []);
       _following = List<String>.from(data['following'] ?? []);
+
+      // Update goals count
+      _goalsCount = await updateGoalsCount(_userId);
 
       // Set isLoading to false after loading data
       _isLoading = false;
@@ -132,7 +147,6 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  // Getters to access user information
   String get userId => _userId;
   String get userName => _userName;
   String get rollNo => _rollNo;
@@ -143,6 +157,5 @@ class UserProvider with ChangeNotifier {
   List<String> get followers => _followers;
   List<String> get following => _following;
 
-  // Getter to access isLoading status
   bool get isLoading => _isLoading;
 }

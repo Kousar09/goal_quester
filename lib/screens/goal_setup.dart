@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:goal_quester/constants/color_constants.dart';
+import 'package:goal_quester/services/user_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:uuid/uuid.dart';
 
@@ -24,9 +26,7 @@ class _GoalSetUpState extends State<GoalSetUp> {
   final List goalCategories = [
     'Select an Option',
     'Study Related',
-    'Excersise Related',
     'Job Related',
-    'Short Term',
     'Others'
   ];
   String startDate = DateTime.now().toString();
@@ -84,7 +84,6 @@ class _GoalSetUpState extends State<GoalSetUp> {
         final DocumentReference goalDocRef = goalsCollection.doc(goalId);
         List<String> titleWords =
             removeStopWords(goalTitle).toLowerCase().split(' ');
-        titleWords = titleWords + removeStopWords(goalType).split(" ");
 // Save goal data
         await goalDocRef.set({
           "userId": userId,
@@ -116,10 +115,36 @@ class _GoalSetUpState extends State<GoalSetUp> {
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Goal added successfully")));
+        final user = Provider.of<UserProvider>(context, listen: false);
+        user.incrementGoalCount();
         Navigator.pop(context);
+        List<MatchedGoal> matchedGoals =
+            await compareAndGenerateList(titleWords, goalId);
+        for (MatchedGoal goal in matchedGoals) {
+          final suggestionId = const Uuid().v1();
+          FirebaseFirestore.instance
+              .collection("suggestions")
+              .doc(userId)
+              .collection('withUsers')
+              .doc(suggestionId)
+              .set({
+            "goalId": goal.goalId,
+            "userId": goal.userId,
+            "matchedWords": goal.matchedWords
+          });
+          FirebaseFirestore.instance
+              .collection("suggestions")
+              .doc(goal.userId)
+              .collection('withUsers')
+              .doc(suggestionId)
+              .set({
+            "goalId": goal.goalId,
+            "userId": userId,
+            "matchedWords": goal.matchedWords
+          });
+        }
       }
     } catch (error) {
-      // Handle errors here
       setState(() {
         isLoading = false;
       });
@@ -130,9 +155,56 @@ class _GoalSetUpState extends State<GoalSetUp> {
     }
   }
 
+  Future<List<MatchedGoal>> compareAndGenerateList(
+      List<String> myTitleWords, String currentgoalId) async {
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    List<MatchedGoal> matchedGoals = [];
+
+    try {
+      QuerySnapshot goalsSnapshot = await firestore.collection('goals').get();
+
+      goalsSnapshot.docs.forEach((DocumentSnapshot document) {
+        String goalId = document.id;
+        if (goalId == currentgoalId) {
+          return;
+        }
+        String visibility =
+            (document.data() as Map<String, dynamic>?)?['visibility'] as String;
+        if (visibility == 'private') {
+          return;
+        }
+        String userId = (document.data() as Map<String, dynamic>?)?['userId'];
+        List<String> titleWords = List<String>.from((document.data()
+                as Map<String, dynamic>?)?['titleWords'] as List<dynamic>? ??
+            []);
+
+        List<String> matchedWords = [];
+
+        for (String word in titleWords) {
+          if (myTitleWords.contains(word)) {
+            matchedWords.add(word);
+          }
+        }
+
+        if (matchedWords.isNotEmpty) {
+          matchedGoals.add(MatchedGoal(
+            goalId: goalId,
+            userId: userId,
+            matchedWords: matchedWords,
+          ));
+        }
+      });
+    } catch (e) {
+      print('Error: $e');
+    }
+
+    return matchedGoals;
+  }
+
   String removeStopWords(String text) {
     // Define a list of stop words
     List<String> stopWords = [
+      '',
       'i',
       'me',
       'my',
@@ -357,6 +429,9 @@ class _GoalSetUpState extends State<GoalSetUp> {
                       ),
                       const SizedBox(height: 20),
                       buildGoalTypeDropDown(),
+                      goalType == "Others"
+                          ? buildOthersTextField()
+                          : SizedBox.shrink(),
                       buildGoalVisibilityDropDown(),
                       buildTasksListView(),
                       buildAddTaskButton(),
@@ -439,7 +514,7 @@ class _GoalSetUpState extends State<GoalSetUp> {
         ),
         const SizedBox(
           height: 15,
-        )
+        ),
       ],
     );
   }
@@ -523,6 +598,46 @@ class _GoalSetUpState extends State<GoalSetUp> {
             autocorrect: true,
             decoration: const InputDecoration(
                 border: InputBorder.none, hintText: "Enter Goal Title"),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildOthersTextField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Enter goal Type",
+          style: GoogleFonts.notoSans(
+              textStyle:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(
+          height: 5,
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 17),
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              color: const Color.fromARGB(255, 246, 237, 237)),
+          child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return "Goal Type should not be empty";
+              }
+              return null;
+            },
+            onChanged: (value) {
+              setState(() {
+                goalType = value;
+              });
+            },
+            autocorrect: true,
+            decoration: const InputDecoration(
+                border: InputBorder.none, hintText: "Enter Goal Type"),
           ),
         ),
       ],
@@ -650,7 +765,8 @@ class DateInputField extends StatelessWidget {
   final DateTime date;
   final Function(DateTime) onDateSelected;
 
-  const DateInputField({super.key, 
+  const DateInputField({
+    super.key,
     required this.date,
     required this.onDateSelected,
   });
@@ -701,5 +817,25 @@ class DateInputField extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class MatchedGoal {
+  String goalId;
+  String userId;
+  List<String> matchedWords;
+
+  MatchedGoal({
+    required this.goalId,
+    required this.userId,
+    required this.matchedWords,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'goalId': goalId,
+      'userId': userId,
+      'matchedWords': matchedWords,
+    };
   }
 }

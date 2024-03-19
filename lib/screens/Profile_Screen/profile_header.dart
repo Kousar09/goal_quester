@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:goal_quester/screens/edit_profile_screen.dart';
+import 'package:goal_quester/screens/image_widget.dart';
 import 'package:goal_quester/screens/list_users.dart';
 import 'package:goal_quester/screens/one_ot_one_chat.dart';
 import 'package:goal_quester/services/user_provider.dart';
@@ -49,10 +50,12 @@ class _ProfileHeaderState extends State<ProfileHeader> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 45.0,
-                backgroundImage: NetworkImage(widget.profileImageUrl),
-              ),
+              ProfileImage(
+                  purl: widget.profileImageUrl,
+                  gender: "male",
+                  height: 90,
+                  width: 90,
+                  borderRadius: 45),
               const SizedBox(width: 20.0),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
